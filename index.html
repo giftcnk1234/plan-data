@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดเก็บข้อมูลเล่มแผนปฏิบัติราชการ และฐานข้อมูลโครงการ สำนักงานเลขาธิการวุฒิสภา</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Sarabun', 'sans-serif'] },
+                    colors: {
+                        senate: { blue: '#0B295A', gold: '#D4AF37', light: '#F4F7FB' }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .bookshelf-row { border-bottom: 12px solid #8B5A2B; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); margin-bottom: 2rem; padding-bottom: 1rem; }
+        .checkbox-dropdown-list { max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-gray-800 h-screen flex overflow-hidden selection:bg-blue-200">
+
+    <div id="mobile-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="bg-gradient-to-br from-[#0B295A] via-[#1a365d] to-[#2563eb] text-white w-72 flex-shrink-0 flex flex-col transition-transform transform -translate-x-full lg:translate-x-0 absolute lg:relative z-30 h-full shadow-[4px_0_24px_rgba(0,0,0,0.15)] border-r border-blue-800/30">
+        <div class="p-6 flex flex-col items-center border-b border-blue-800/50">
+            <img src="https://s.isanook.com/ns/0/ud/318/1594326/81b6301bd2030a2df66c0e9c6059d11c.jpg?ip/crop/w670h402/q80/jpg" alt="Logo" class="w-24 h-24 rounded-full object-cover border-4 border-senate-gold shadow-lg mb-4 transform hover:scale-105 transition-transform">
+            <h1 class="text-center font-bold text-lg leading-tight">ระบบจัดเก็บข้อมูลเล่มแผนปฏิบัติราชการ<br><span class="text-sm font-normal text-blue-200 mt-1 block">สำนักงานเลขาธิการวุฒิสภา</span></h1>
+        </div>
+        
+        <nav class="flex-1 overflow-y-auto py-4">
+            <ul class="space-y-1">
+                <li><button onclick="switchView('dashboard')" id="nav-dashboard" class="w-full text-left px-6 py-3 hover:bg-white/10 transition-colors flex items-center gap-3 bg-white/10 border-l-4 border-senate-gold text-sm font-medium"><i class="fas fa-chart-pie w-5 text-center"></i> Dashboard ภาพรวม</button></li>
+                <li><button onclick="switchView('data')" id="nav-data" class="w-full text-left px-6 py-3 hover:bg-white/10 transition-colors flex items-center gap-3 border-l-4 border-transparent text-sm font-medium"><i class="fas fa-book w-5 text-center"></i> ข้อมูลเล่มแผนปฏิบัติราชการ</button></li>
+                <li><a href="https://sites.google.com/view/inforpj/main" target="_blank" class="w-full text-left px-6 py-3 hover:bg-white/10 transition-colors flex items-center gap-3 border-l-4 border-transparent text-sm font-medium"><i class="fas fa-database w-5 text-center"></i> ฐานข้อมูลรายชื่อโครงการ <i class="fas fa-external-link-alt text-xs ml-auto opacity-70"></i></a></li>
+                <li><a href="https://sites.google.com/view/comparison-plan/1" target="_blank" class="w-full text-left px-6 py-3 hover:bg-white/10 transition-colors flex items-center gap-3 border-l-4 border-transparent text-sm font-medium"><i class="fas fa-layer-group w-5 text-center"></i> เล่มแผนตามขั้นตอนงบประมาณ <i class="fas fa-external-link-alt text-xs ml-auto opacity-70"></i></a></li>
+                <li><button onclick="switchView('admin')" id="nav-admin" class="w-full text-left px-6 py-3 hover:bg-white/10 transition-colors flex items-center gap-3 border-l-4 border-transparent text-sm font-medium"><i class="fas fa-user-cog w-5 text-center"></i> ผู้ดูแลระบบ</button></li>
+            </ul>
+        </nav>
+        
+        <div class="p-4 text-xs text-center border-t border-blue-800/50 text-blue-300 bg-black/10">v1.2.2</div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <header class="bg-white shadow-sm flex items-center justify-between p-4 z-10">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="text-senate-blue hover:text-blue-700 hover:bg-gray-100 p-2 rounded-lg transition-colors focus:outline-none flex items-center justify-center text-xl"><i class="fas fa-bars"></i></button>
+                <h2 id="page-title" class="text-xl font-bold text-senate-blue ml-2 sm:ml-4 lg:ml-0">Dashboard ภาพรวม</h2>
+            </div>
+            <div class="hidden sm:block text-sm text-gray-500">สำนักงานเลขาธิการวุฒิสภา</div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 relative" id="scroll-container">
+            
+            <div id="loader" class="absolute inset-0 bg-white bg-opacity-80 z-50 flex flex-col items-center justify-center hidden">
+                <i class="fas fa-spinner fa-spin text-5xl text-senate-blue mb-4"></i>
+                <p class="text-lg font-medium text-gray-600">กำลังโหลดข้อมูล...</p>
+            </div>
+
+            <!-- View: Dashboard -->
+            <div id="view-dashboard" class="view-section">
+                <!-- Filter Section -->
+                <div class="bg-white p-4 rounded-xl shadow-md mb-6 flex flex-wrap gap-4 items-end border border-gray-100">
+                    <div class="flex items-center flex-wrap gap-3 w-full">
+                        <label class="block text-sm font-medium text-gray-700"><i class="fas fa-filter text-senate-blue mr-1"></i> กรองปีงบประมาณ</label>
+                        <div class="relative min-w-[200px] flex-1 max-w-sm">
+                            <button type="button" onclick="toggleYearDropdown()" class="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 px-4 text-left shadow-sm focus:outline-none focus:ring-2 focus:ring-senate-blue/50 focus:border-senate-blue transition-all flex justify-between items-center hover:bg-gray-100">
+                                <span id="year-filter-text" class="font-medium text-gray-700">เลือกทั้งหมด</span>
+                                <i class="fas fa-chevron-down text-gray-400 text-sm"></i>
+                            </button>
+                            <div id="year-dropdown-panel" class="hidden absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-200">
+                                <div class="p-2 border-b border-gray-100 flex justify-between gap-2">
+                                    <button onclick="selectAllYears(true)" class="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 flex-1">เลือกทั้งหมด</button>
+                                    <button onclick="selectAllYears(false)" class="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded hover:bg-gray-100 flex-1">ล้างการเลือก</button>
+                                </div>
+                                <div id="year-checkboxes" class="p-2 checkbox-dropdown-list space-y-2"></div>
+                                <div class="p-2 border-t border-gray-100">
+                                    <button onclick="applyDashboardFilter()" class="w-full bg-senate-blue text-white text-sm py-2 rounded-lg hover:bg-blue-800 transition-colors font-medium shadow-sm">ตกลง</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="clearDashboardFilter()" class="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border border-red-100 shadow-sm"><i class="fas fa-times"></i> ล้างตัวกรอง</button>
+                    </div>
+                </div>
+
+                <!-- Summary Cards Section -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                    <!-- Card 1 -->
+                    <div class="bg-gradient-to-br from-emerald-400 to-emerald-600 p-6 rounded-2xl shadow-md relative overflow-hidden group hover:shadow-xl hover:shadow-emerald-500/30 transition-all duration-300 transform hover:-translate-y-1 border border-white/20">
+                        <div class="absolute -right-4 -bottom-4 opacity-20 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-500 pointer-events-none">
+                            <i class="fas fa-hand-holding-dollar text-9xl text-white"></i>
+                        </div>
+                        <div class="flex items-center gap-3 mb-4 relative z-10">
+                            <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
+                                <i class="fas fa-arrow-trend-up text-xl"></i>
+                            </div>
+                            <div class="text-sm font-semibold text-emerald-50 bg-black/10 px-3 py-1 rounded-full backdrop-blur-sm">งบประมาณสูงสุด</div>
+                        </div>
+                        <div class="relative z-10 text-white">
+                            <div class="text-2xl font-bold tracking-tight mb-1 drop-shadow-md truncate" id="card-max-budget-val">-</div>
+                            <div class="text-sm text-emerald-100 font-medium flex items-center gap-1.5">
+                                <i class="far fa-calendar-alt opacity-80"></i> <span id="card-max-budget-year">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 2 -->
+                    <div class="bg-gradient-to-br from-rose-400 to-rose-600 p-6 rounded-2xl shadow-md relative overflow-hidden group hover:shadow-xl hover:shadow-rose-500/30 transition-all duration-300 transform hover:-translate-y-1 border border-white/20">
+                        <div class="absolute -right-4 -bottom-4 opacity-20 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-500 pointer-events-none">
+                            <i class="fas fa-wallet text-9xl text-white"></i>
+                        </div>
+                        <div class="flex items-center gap-3 mb-4 relative z-10">
+                            <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
+                                <i class="fas fa-arrow-trend-down text-xl"></i>
+                            </div>
+                            <div class="text-sm font-semibold text-rose-50 bg-black/10 px-3 py-1 rounded-full backdrop-blur-sm">งบประมาณต่ำสุด</div>
+                        </div>
+                        <div class="relative z-10 text-white">
+                            <div class="text-2xl font-bold tracking-tight mb-1 drop-shadow-md truncate" id="card-min-budget-val">-</div>
+                            <div class="text-sm text-rose-100 font-medium flex items-center gap-1.5">
+                                <i class="far fa-calendar-alt opacity-80"></i> <span id="card-min-budget-year">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 3 -->
+                    <div class="bg-gradient-to-br from-blue-500 to-indigo-600 p-6 rounded-2xl shadow-md relative overflow-hidden group hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 transform hover:-translate-y-1 border border-white/20">
+                        <div class="absolute -right-4 -bottom-4 opacity-20 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-500 pointer-events-none">
+                            <i class="fas fa-folder-open text-9xl text-white"></i>
+                        </div>
+                        <div class="flex items-center gap-3 mb-4 relative z-10">
+                            <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
+                                <i class="fas fa-chart-pie text-xl"></i>
+                            </div>
+                            <div class="text-sm font-semibold text-blue-50 bg-black/10 px-3 py-1 rounded-full backdrop-blur-sm">โครงการมากที่สุด</div>
+                        </div>
+                        <div class="relative z-10 text-white">
+                            <div class="text-2xl font-bold tracking-tight mb-1 drop-shadow-md truncate" id="card-max-project-val">-</div>
+                            <div class="text-sm text-blue-100 font-medium flex items-center gap-1.5">
+                                <i class="far fa-calendar-alt opacity-80"></i> <span id="card-max-project-year">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 4 -->
+                    <div class="bg-gradient-to-br from-amber-400 to-orange-500 p-6 rounded-2xl shadow-md relative overflow-hidden group hover:shadow-xl hover:shadow-amber-500/30 transition-all duration-300 transform hover:-translate-y-1 border border-white/20">
+                        <div class="absolute -right-4 -bottom-4 opacity-20 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-500 pointer-events-none">
+                            <i class="fas fa-folder-minus text-9xl text-white"></i>
+                        </div>
+                        <div class="flex items-center gap-3 mb-4 relative z-10">
+                            <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner">
+                                <i class="fas fa-chart-area text-xl"></i>
+                            </div>
+                            <div class="text-sm font-semibold text-amber-50 bg-black/10 px-3 py-1 rounded-full backdrop-blur-sm">โครงการน้อยที่สุด</div>
+                        </div>
+                        <div class="relative z-10 text-white">
+                            <div class="text-2xl font-bold tracking-tight mb-1 drop-shadow-md truncate" id="card-min-project-val">-</div>
+                            <div class="text-sm text-amber-100 font-medium flex items-center gap-1.5">
+                                <i class="far fa-calendar-alt opacity-80"></i> <span id="card-min-project-year">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Area -->
+                <div class="flex flex-col gap-8">
+                    <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-t-4 border-blue-500 relative overflow-hidden group">
+                        <div class="absolute -top-6 -right-6 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-500"><i class="fas fa-chart-line text-9xl text-blue-600"></i></div>
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 text-center flex items-center justify-center gap-2"><i class="fas fa-coins text-blue-500"></i> จำนวนงบประมาณต่อปี (บาท)</h3>
+                        <div class="w-full overflow-x-auto pb-4"><div class="relative h-72 sm:h-96 min-w-[700px]"><canvas id="budgetChart"></canvas></div></div>
+                    </div>
+                    
+                    <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-t-4 border-amber-500 relative overflow-hidden group">
+                        <div class="absolute -top-6 -right-6 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-500"><i class="fas fa-chart-pie text-9xl text-amber-500"></i></div>
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 text-center flex items-center justify-center gap-2"><i class="fas fa-project-diagram text-amber-500"></i> จำนวนโครงการต่อปี</h3>
+                        <div class="w-full overflow-x-auto pb-4"><div class="relative h-72 sm:h-96 min-w-[700px]"><canvas id="projectChart"></canvas></div></div>
+                    </div>
+                </div>
+
+                <!-- Data Table Summary -->
+                <div class="mt-8 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden border border-gray-100">
+                    <div class="bg-gradient-to-r from-blue-700 to-indigo-600 px-6 py-4 flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2"><i class="fas fa-list-alt opacity-90"></i> ตารางสรุปข้อมูล</h3>
+                    </div>
+                    <div class="overflow-x-auto max-h-[580px] overflow-y-auto relative custom-scrollbar">
+                        <table class="w-full text-sm text-left text-gray-600">
+                            <thead class="text-xs text-gray-700 uppercase bg-blue-50 border-b border-blue-100 sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th scope="col" class="px-6 py-4 font-bold text-center w-24 text-blue-900">ลำดับที่</th>
+                                    <th scope="col" class="px-6 py-4 font-bold text-center text-blue-900">ปีงบประมาณ พ.ศ.</th>
+                                    <th scope="col" class="px-6 py-4 font-bold text-center text-blue-900">จำนวนโครงการ</th>
+                                    <th scope="col" class="px-6 py-4 font-bold text-right text-blue-900">งบประมาณ (ตาม พ.ร.บ.)</th>
+                                    <th scope="col" class="px-6 py-4 font-bold text-center text-blue-900">หมายเหตุ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboard-table-body" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Plan Data -->
+            <div id="view-data" class="view-section hidden">
+                <div class="bg-white p-4 rounded-xl shadow-md mb-8 flex flex-wrap gap-4 items-center justify-between border border-gray-100">
+                    <div class="flex items-center flex-wrap gap-3">
+                        <label class="block text-sm font-medium text-gray-700"><i class="fas fa-calendar-alt text-senate-blue mr-1"></i> ปีงบประมาณ พ.ศ.</label>
+                        <select id="data-year-select" onchange="renderDataGrid()" class="bg-gray-50 border border-gray-200 rounded-lg py-2 px-4 focus:ring-2 focus:ring-senate-blue/50 focus:border-senate-blue transition-all"></select>
+                        <button onclick="clearDataFilter()" class="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border border-red-100 shadow-sm"><i class="fas fa-times"></i> ล้างตัวกรอง</button>
+                    </div>
+                    <div class="text-sm text-gray-500 font-medium">พบข้อมูล <span id="data-count" class="text-senate-blue font-bold">0</span> รายการ</div>
+                </div>
+                <div id="bookshelf-container" class="pb-10"></div>
+            </div>
+
+            <!-- View: Admin Login -->
+            <div id="view-admin-login" class="view-section hidden flex items-center justify-center min-h-[60vh]">
+                <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md border-t-4 border-senate-blue">
+                    <div class="text-center mb-6">
+                        <i class="fas fa-lock text-4xl text-gray-300 mb-3"></i>
+                        <h3 class="text-xl font-bold text-gray-800">เข้าสู่ระบบผู้ดูแลระบบ</h3>
+                        <p class="text-sm text-gray-500 mt-1">สำหรับการจัดการข้อมูลเล่มแผนปฏิบัติราชการ</p>
+                    </div>
+                    <form onsubmit="handleLogin(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                            <input type="text" id="login-user" required class="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-senate-blue">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                            <input type="password" id="login-pass" required class="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-senate-blue">
+                        </div>
+                        <button type="submit" class="w-full bg-senate-blue text-white font-medium py-2 px-4 rounded-md hover:bg-blue-800 transition-colors shadow-sm mt-4">เข้าสู่ระบบ</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- View: Admin Panel (Data Entry & Table) -->
+            <div id="view-admin-form" class="view-section hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800" id="admin-form-title">บันทึกข้อมูลใหม่</h3>
+                        <p class="text-sm text-gray-500">จัดการข้อมูลเล่มแผนปฏิบัติราชการ</p>
+                    </div>
+                    <button onclick="logoutAdmin()" class="text-red-600 hover:text-red-800 text-sm font-medium flex items-center gap-1 bg-red-50 px-3 py-1.5 rounded">
+                        <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
+                    </button>
+                </div>
+
+                <!-- Admin Form -->
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <form id="addDataForm" onsubmit="handleFormSubmit(event)" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ปีงบประมาณ พ.ศ. <span class="text-red-500">*</span></label>
+                                <input type="number" id="form-year" required placeholder="เช่น 2568" class="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-senate-blue">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">จำนวนโครงการ <span class="text-red-500">*</span></label>
+                                <input type="number" id="form-projects" required placeholder="เช่น 50" class="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-senate-blue">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">งบประมาณ (ตาม พ.ร.บ.) บาท <span class="text-red-500">*</span></label>
+                                <input type="number" step="0.01" id="form-budget" required placeholder="เช่น 15000000" class="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-senate-blue">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Link เล่มแผน <span class="text-red-500">*</span></label>
+                                <input type="url" id="form-link" required placeholder="https://..." class="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-senate-blue">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
+                                <input type="text" id="form-note" placeholder="ระบุหมายเหตุ (ถ้ามี)" class="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-senate-blue">
+                            </div>
+                            
+                            <!-- Image Upload Zone -->
+                            <div class="md:col-span-2 border-2 border-dashed border-gray-300 p-4 rounded-lg bg-gray-50 text-center relative hover:bg-gray-100 transition-colors">
+                                <input type="file" id="form-cover" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="previewImage(event)">
+                                <div class="space-y-2 pointer-events-none" id="upload-placeholder">
+                                    <i class="fas fa-cloud-upload-alt text-4xl text-gray-400"></i>
+                                    <div class="text-sm font-medium text-gray-700" id="upload-text">คลิกหรือลากไฟล์ภาพหน้าปกมาวางที่นี่ <span class="text-red-500">*</span></div>
+                                    <p class="text-xs text-gray-500">รองรับไฟล์ JPG, PNG</p>
+                                </div>
+                                <div id="image-preview-container" class="hidden mt-2 pointer-events-none">
+                                    <img id="image-preview" class="max-h-48 mx-auto rounded shadow-sm">
+                                    <p id="file-name-display" class="text-xs text-gray-600 mt-2 truncate"></p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-end pt-4 border-t border-gray-100">
+                            <button type="button" id="btn-cancel-edit" onclick="resetForm()" class="hidden px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-md mr-3 hover:bg-gray-200 font-medium">ยกเลิกการแก้ไข</button>
+                            <button type="button" id="btn-clear" onclick="resetForm()" class="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-md mr-3 hover:bg-gray-200 font-medium">ล้างข้อมูล</button>
+                            <button type="submit" id="btn-submit" class="px-6 py-2 text-sm text-white bg-senate-blue rounded-md hover:bg-blue-800 font-medium shadow-sm flex items-center gap-2">
+                                <i class="fas fa-save"></i> <span>บันทึกข้อมูลใหม่</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Admin Management Table -->
+                <div class="mt-8 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-database text-senate-blue"></i> จัดการข้อมูลที่มีอยู่</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-600">
+                            <thead class="text-xs text-gray-700 uppercase bg-blue-50/50 border-b border-gray-200">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3 font-bold text-center text-blue-900 w-16">พ.ศ.</th>
+                                    <th scope="col" class="px-4 py-3 font-bold text-center text-blue-900">จำนวนโครงการ</th>
+                                    <th scope="col" class="px-4 py-3 font-bold text-right text-blue-900">งบประมาณ</th>
+                                    <th scope="col" class="px-4 py-3 font-bold text-center text-blue-900">หมายเหตุ</th>
+                                    <th scope="col" class="px-4 py-3 font-bold text-center text-blue-900 w-32">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-table-body" class="divide-y divide-gray-100">
+                                <!-- Dynamic Management Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <footer class="bg-white border-t border-gray-200 text-center py-3 text-xs text-gray-500 mt-auto shrink-0 relative z-10">
+            พัฒนาโดยนางสาวชนากานต์ อิ่มสุวรรณ และบุคลากรกลุ่มงานแผนงานและโครงการ สำนักงานเลขาธิการวุฒิสภา
+        </footer>
+    </main>
+
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        // เปลี่ยนเป็น URL Web App ใหม่หลังจาก Deploy เสมอ
+        const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyDS9Bb6QQnJ2Qum33QVDN-5PTayfVvMTC8VNOvlWW-2n0syrxcYAABNG48qHh2G7ltAA/exec'; 
+
+        Chart.register(ChartDataLabels);
+        Chart.defaults.font.family = "'Sarabun', sans-serif"; // ย้ายการตั้งค่าฟอนต์ออกมาตั้งครั้งเดียว
+
+        let appData = [];
+        let filteredYears = [];
+        let budgetChartInstance = null;
+        let projectChartInstance = null;
+        
+        let isAdminLoggedIn = sessionStorage.getItem('isAdminLoggedIn') === 'true';
+        let editingId = null; 
+
+        const MOCK_DATA = [
+            { id: 1, year: '2564', projects: 42, budget: 12500000, link: '#', note: '-', cover: 'https://placehold.co/400x560/0B295A/FFF?text=Plan+2564' },
+            { id: 2, year: '2565', projects: 48, budget: 14200000, link: '#', note: '-', cover: 'https://placehold.co/400x560/0B295A/FFF?text=Plan+2565' }
+        ];
+
+        window.onload = function() {
+            showLoader(true);
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(processDataLoad).withFailureHandler(() => processDataLoad(MOCK_DATA)).getPlanData();
+            } else if (GAS_API_URL) {
+                fetch(GAS_API_URL + '?action=getData').then(res => res.json()).then(processDataLoad).catch(() => processDataLoad(MOCK_DATA));
+            } else {
+                setTimeout(() => processDataLoad(MOCK_DATA), 800);
+            }
+        };
+
+        function processDataLoad(data) {
+            appData = data.sort((a, b) => parseInt(a.year) - parseInt(b.year));
+            const years = [...new Set(appData.map(item => item.year))].sort((a, b) => b - a);
+            filteredYears = [...years]; 
+            
+            setupFilters(years);
+            renderDashboard();
+            renderDataGrid();
+            renderAdminTable(); 
+            
+            showLoader(false);
+            
+            const savedView = sessionStorage.getItem('currentView') || 'dashboard';
+            switchView(savedView);
+        }
+
+        // --- Navigation ---
+        function switchView(viewId) {
+            sessionStorage.setItem('currentView', viewId);
+            
+            ['dashboard', 'data', 'admin'].forEach(id => {
+                const nav = document.getElementById(`nav-${id}`);
+                if(nav) {
+                    if (id === viewId) nav.classList.add('bg-blue-800', 'border-l-4', 'border-senate-gold'), nav.classList.remove('border-transparent');
+                    else nav.classList.remove('bg-blue-800', 'border-l-4', 'border-senate-gold'), nav.classList.add('border-transparent');
+                }
+            });
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            
+            const titleMap = { 'dashboard': 'Dashboard ภาพรวม', 'data': 'ข้อมูลเล่มแผนปฏิบัติราชการ', 'admin': 'ผู้ดูแลระบบ' };
+            document.getElementById('page-title').innerText = titleMap[viewId];
+
+            if (viewId === 'admin') {
+                if (isAdminLoggedIn) document.getElementById('view-admin-form').classList.remove('hidden');
+                else document.getElementById('view-admin-login').classList.remove('hidden');
+            } else {
+                document.getElementById(`view-${viewId}`).classList.remove('hidden');
+            }
+            if (window.innerWidth < 1024) toggleSidebar(false);
+        }
+
+        function toggleSidebar(forceShow = null) {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobile-overlay');
+            const isDesktop = window.innerWidth >= 1024;
+            if (isDesktop) { sidebar.style.display = sidebar.style.display === 'none' ? 'flex' : 'none'; return; }
+            const show = forceShow !== null ? forceShow : sidebar.classList.contains('-translate-x-full');
+            sidebar.classList.toggle('-translate-x-full', !show);
+            overlay.classList.toggle('hidden', !show);
+        }
+
+        function clearDataFilter() { document.getElementById('data-year-select').value = 'all'; renderDataGrid(); }
+        function setupFilters(years) {
+            const cbContainer = document.getElementById('year-checkboxes');
+            let cbHtml = '';
+            years.forEach(year => {
+                cbHtml += `<div class="flex items-center"><input type="checkbox" id="cb-${year}" value="${year}" checked class="w-4 h-4 text-senate-blue border-gray-300 rounded year-checkbox"><label for="cb-${year}" class="ml-2 text-sm text-gray-700 w-full">${year}</label></div>`;
+            });
+            cbContainer.innerHTML = cbHtml;
+
+            const dataSelect = document.getElementById('data-year-select');
+            let selectHtml = '<option value="all">แสดงทุกปีงบประมาณ</option>';
+            years.forEach(year => selectHtml += `<option value="${year}">ปี พ.ศ. ${year}</option>`);
+            dataSelect.innerHTML = selectHtml;
+        }
+        function toggleYearDropdown() { document.getElementById('year-dropdown-panel').classList.toggle('hidden'); }
+        function selectAllYears(checked) { document.querySelectorAll('.year-checkbox').forEach(cb => cb.checked = checked); }
+        function applyDashboardFilter() {
+            const checkboxes = document.querySelectorAll('.year-checkbox');
+            filteredYears = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+            const textSpan = document.getElementById('year-filter-text');
+            textSpan.innerText = filteredYears.length === 0 ? 'ไม่ได้เลือก' : (filteredYears.length === checkboxes.length ? 'เลือกทั้งหมด' : `เลือกแล้ว ${filteredYears.length} ปี`);
+            document.getElementById('year-dropdown-panel').classList.add('hidden');
+            renderDashboard();
+        }
+        function clearDashboardFilter() { selectAllYears(true); applyDashboardFilter(); }
+        document.addEventListener('click', function(event) {
+            const panel = document.getElementById('year-dropdown-panel');
+            const button = panel.previousElementSibling;
+            if (!panel.contains(event.target) && !button.contains(event.target)) panel.classList.add('hidden');
+        });
+
+        function renderDashboard() {
+            const chartData = appData.filter(item => filteredYears.includes(item.year)).sort((a,b) => parseInt(a.year) - parseInt(b.year));
+            
+            // --- Update Summary Cards ---
+            if (chartData.length > 0) {
+                const maxBudgetNode = chartData.reduce((prev, current) => (Number(prev.budget) > Number(current.budget)) ? prev : current);
+                const minBudgetNode = chartData.reduce((prev, current) => (Number(prev.budget) < Number(current.budget)) ? prev : current);
+                const maxProjectNode = chartData.reduce((prev, current) => (Number(prev.projects) > Number(current.projects)) ? prev : current);
+                const minProjectNode = chartData.reduce((prev, current) => (Number(prev.projects) < Number(current.projects)) ? prev : current);
+
+                document.getElementById('card-max-budget-year').innerText = `ปี พ.ศ. ${maxBudgetNode.year}`;
+                document.getElementById('card-max-budget-val').innerText = `${Number(maxBudgetNode.budget).toLocaleString('th-TH')} บาท`;
+
+                document.getElementById('card-min-budget-year').innerText = `ปี พ.ศ. ${minBudgetNode.year}`;
+                document.getElementById('card-min-budget-val').innerText = `${Number(minBudgetNode.budget).toLocaleString('th-TH')} บาท`;
+
+                document.getElementById('card-max-project-year').innerText = `ปี พ.ศ. ${maxProjectNode.year}`;
+                document.getElementById('card-max-project-val').innerText = `${maxProjectNode.projects} โครงการ`;
+
+                document.getElementById('card-min-project-year').innerText = `ปี พ.ศ. ${minProjectNode.year}`;
+                document.getElementById('card-min-project-val').innerText = `${minProjectNode.projects} โครงการ`;
+            } else {
+                document.getElementById('card-max-budget-year').innerText = '-';
+                document.getElementById('card-max-budget-val').innerText = '-';
+                document.getElementById('card-min-budget-year').innerText = '-';
+                document.getElementById('card-min-budget-val').innerText = '-';
+                document.getElementById('card-max-project-year').innerText = '-';
+                document.getElementById('card-max-project-val').innerText = '-';
+                document.getElementById('card-min-project-year').innerText = '-';
+                document.getElementById('card-min-project-val').innerText = '-';
+            }
+            // ---------------------------
+
+            const labels = chartData.map(item => item.year), budgets = chartData.map(item => item.budget), projects = chartData.map(item => item.projects);
+            
+            const ctxBudget = document.getElementById('budgetChart').getContext('2d');
+            if (budgetChartInstance) budgetChartInstance.destroy();
+            const gradB = ctxBudget.createLinearGradient(0,0,0,400); gradB.addColorStop(0,'#3b82f6'); gradB.addColorStop(1,'#1d4ed8');
+            budgetChartInstance = new Chart(ctxBudget, { type:'bar', data:{labels, datasets:[{data:budgets, backgroundColor:gradB, borderRadius:8}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, datalabels:{display:false}}, scales:{y:{beginAtZero:true}, x:{grid:{display:false}}}} });
+
+            const ctxProject = document.getElementById('projectChart').getContext('2d');
+            if (projectChartInstance) projectChartInstance.destroy();
+            const gradP = ctxProject.createLinearGradient(0,0,0,400); gradP.addColorStop(0,'#f59e0b'); gradP.addColorStop(1,'#d97706');
+            projectChartInstance = new Chart(ctxProject, { type:'bar', data:{labels, datasets:[{data:projects, backgroundColor:gradP, borderRadius:8}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, datalabels:{color:'#fff', font:{weight:'bold', size:16}, formatter:Math.round}}, scales:{y:{beginAtZero:true}, x:{grid:{display:false}}}} });
+
+            const tbody = document.getElementById('dashboard-table-body');
+            let tableHtml = '';
+            const tableData = [...chartData].sort((a,b) => parseInt(b.year) - parseInt(a.year));
+            if (tableData.length === 0) {
+                tableHtml = `<tr><td colspan="5" class="px-6 py-10 text-center text-gray-500">ไม่มีข้อมูล</td></tr>`;
+            } else {
+                tableData.forEach((item, index) => {
+                    tableHtml += `<tr class="hover:bg-blue-50/50"><td class="px-6 py-4 text-center">${index + 1}</td><td class="px-6 py-4 text-center font-bold"><span class="bg-blue-100 text-blue-800 py-1 px-3 rounded-full text-xs">${item.year}</span></td><td class="px-6 py-4 text-center">${item.projects}</td><td class="px-6 py-4 text-right font-bold text-blue-700">${Number(item.budget).toLocaleString('th-TH')}</td><td class="px-6 py-4 text-center text-sm">${item.note || '-'}</td></tr>`;
+                });
+            }
+            tbody.innerHTML = tableHtml;
+        }
+
+        // ตัวช่วยสำหรับแปลงลิงก์ Google Drive ใน Database แบบเก่า ให้เป็นลิงก์ thumbnail เพื่อความชัวร์ว่าโหลดภาพได้
+        function getOptimizeImageUrl(url) {
+            if (!url) return 'https://placehold.co/400x560/e2e8f0/64748b?text=No+Image';
+            
+            // แปลงลิงก์เก่าแบบ /file/d/...
+            if (url.includes('drive.google.com/file/d/')) {
+                const match = url.match(/\/d\/(.+?)\//);
+                if (match && match[1]) return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w800`;
+            }
+            
+            // แปลงลิงก์เก่าแบบ uc?export=view...
+            if (url.includes('uc?export=')) {
+                const match = url.match(/id=([^&]+)/);
+                if (match && match[1]) return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w800`;
+            }
+            
+            return url;
+        }
+
+        function renderDataGrid() {
+            const selectedYear = document.getElementById('data-year-select').value;
+            const container = document.getElementById('bookshelf-container');
+            let displayData = [...appData].sort((a,b) => parseInt(b.year) - parseInt(a.year));
+            if (selectedYear !== 'all') displayData = displayData.filter(item => item.year === selectedYear);
+            document.getElementById('data-count').innerText = displayData.length;
+            
+            if (displayData.length === 0) { container.innerHTML = `<div class="text-center py-10 text-gray-500">ไม่มีข้อมูล</div>`; return; }
+            
+            let gridHtml = '';
+            for (let i = 0; i < displayData.length; i += 4) {
+                const chunk = displayData.slice(i, i + 4);
+                gridHtml += `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 bookshelf-row bg-white bg-opacity-40 p-4 rounded-t-xl">`;
+                chunk.forEach(item => {
+                    gridHtml += `
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow flex flex-col group border border-gray-100 transform hover:-translate-y-1">
+                            <div class="relative h-64 overflow-hidden bg-gray-100 border-b border-gray-200 p-2">
+                                <!-- ใส่ referrerpolicy="no-referrer" เพื่อกันการบล็อกจากนโยบายความปลอดภัย Google -->
+                                <img src="${getOptimizeImageUrl(item.cover)}" loading="lazy" referrerpolicy="no-referrer" class="w-full h-full object-contain filter group-hover:brightness-95">
+                                <div class="absolute top-2 right-2 bg-senate-gold text-white text-xs font-bold px-2 py-1 rounded">พ.ศ. ${item.year}</div>
+                            </div>
+                            <div class="p-4 flex-1 flex flex-col"><div class="space-y-2 text-sm text-gray-700 flex-1"><div class="flex justify-between border-b border-gray-100 pb-1"><span>โครงการ:</span><span class="font-semibold text-senate-blue">${item.projects}</span></div><div class="flex justify-between border-b border-gray-100 pb-1"><span>งบประมาณ:</span><span class="font-semibold text-senate-blue">${Number(item.budget).toLocaleString('th-TH')}</span></div><div class="pt-1"><span class="text-xs mb-1 block">หมายเหตุ:</span><p class="text-xs text-gray-600 truncate bg-gray-50 p-1 rounded">${item.note || '-'}</p></div></div><a href="${item.link}" target="_blank" class="mt-4 block w-full text-center bg-blue-50 text-senate-blue border border-blue-200 py-1.5 rounded text-sm hover:bg-senate-blue hover:text-white font-medium">เปิดดูเล่มแผน</a></div>
+                        </div>`;
+                });
+                gridHtml += `</div>`;
+            }
+            container.innerHTML = gridHtml;
+        }
+
+        // --- Admin & CRUD ---
+        function handleLogin(e) {
+            e.preventDefault();
+            if (document.getElementById('login-user').value === 'admin' && document.getElementById('login-pass').value === 'admin1234') {
+                isAdminLoggedIn = true; 
+                sessionStorage.setItem('isAdminLoggedIn', 'true'); 
+                document.getElementById('login-user').value = ''; document.getElementById('login-pass').value = '';
+                switchView('admin'); showToast('เข้าสู่ระบบสำเร็จ');
+            } else showToast('Username หรือ Password ไม่ถูกต้อง', 'error');
+        }
+
+        function logoutAdmin() { 
+            isAdminLoggedIn = false; 
+            sessionStorage.removeItem('isAdminLoggedIn'); 
+            switchView('admin'); 
+            showToast('ออกจากระบบแล้ว'); 
+            resetForm(); 
+        }
+
+        let uploadedBase64 = null;
+        let uploadedFileName = null;
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!file.type.match('image.*')) { showToast('อัปโหลดได้เฉพาะภาพ', 'error'); event.target.value = ''; return; }
+            uploadedFileName = file.name;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedBase64 = e.target.result;
+                document.getElementById('image-preview').src = uploadedBase64;
+                document.getElementById('file-name-display').innerText = file.name;
+                document.getElementById('upload-placeholder').classList.add('hidden');
+                document.getElementById('image-preview-container').classList.remove('hidden');
+            }
+            reader.readAsDataURL(file);
+        }
+
+        function resetForm() {
+            editingId = null;
+            document.getElementById('addDataForm').reset();
+            uploadedBase64 = null; uploadedFileName = null;
+            
+            document.getElementById('upload-placeholder').classList.remove('hidden');
+            document.getElementById('image-preview-container').classList.add('hidden');
+            document.getElementById('image-preview').src = '';
+            
+            document.getElementById('admin-form-title').innerText = 'บันทึกข้อมูลใหม่';
+            document.getElementById('upload-text').innerHTML = 'คลิกหรือลากไฟล์ภาพหน้าปกมาวางที่นี่ <span class="text-red-500">*</span>';
+            document.getElementById('btn-submit').innerHTML = '<i class="fas fa-save"></i> <span>บันทึกข้อมูลใหม่</span>';
+            document.getElementById('btn-submit').classList.replace('bg-green-600', 'bg-senate-blue');
+            document.getElementById('btn-submit').classList.replace('hover:bg-green-700', 'hover:bg-blue-800');
+            document.getElementById('btn-cancel-edit').classList.add('hidden');
+            document.getElementById('btn-clear').classList.remove('hidden');
+        }
+
+        function renderAdminTable() {
+            const tbody = document.getElementById('admin-table-body');
+            const tableData = [...appData].sort((a,b) => parseInt(b.year) - parseInt(a.year));
+            
+            if (tableData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-6 text-center text-gray-500">ไม่มีข้อมูลในระบบ</td></tr>`;
+                return;
+            }
+            
+            let tableHtml = '';
+            tableData.forEach(item => {
+                tableHtml += `
+                    <tr class="hover:bg-blue-50/50 transition-colors duration-150">
+                        <td class="px-4 py-2 text-center font-bold text-gray-800">${item.year}</td>
+                        <td class="px-4 py-2 text-center text-gray-700">${item.projects}</td>
+                        <td class="px-4 py-2 text-right text-blue-700 font-medium">${Number(item.budget).toLocaleString('th-TH')}</td>
+                        <td class="px-4 py-2 text-center text-xs text-gray-500 truncate max-w-[120px]">${item.note || '-'}</td>
+                        <td class="px-4 py-2 text-center">
+                            <button onclick="editRecord('${item.id}')" class="text-amber-500 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 p-1.5 rounded mr-1 transition" title="แก้ไข"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteRecord('${item.id}')" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1.5 rounded transition" title="ลบ"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+            });
+            tbody.innerHTML = tableHtml;
+        }
+
+        function editRecord(id) {
+            const item = appData.find(d => String(d.id) === String(id));
+            if (!item) return;
+
+            editingId = item.id;
+            document.getElementById('form-year').value = item.year;
+            document.getElementById('form-projects').value = item.projects;
+            document.getElementById('form-budget').value = item.budget;
+            document.getElementById('form-link').value = item.link;
+            document.getElementById('form-note').value = item.note || '';
+            
+            uploadedBase64 = null;
+            uploadedFileName = null;
+            document.getElementById('upload-placeholder').classList.remove('hidden');
+            document.getElementById('image-preview-container').classList.add('hidden');
+            
+            document.getElementById('admin-form-title').innerHTML = `แก้ไขข้อมูลปี <span class="text-senate-gold">${item.year}</span>`;
+            document.getElementById('upload-text').innerHTML = 'คลิกเพื่ออัปโหลดภาพใหม่ (เว้นไว้หากไม่ต้องการเปลี่ยนรูป)';
+            document.getElementById('btn-submit').innerHTML = '<i class="fas fa-edit"></i> <span>อัปเดตข้อมูล</span>';
+            document.getElementById('btn-submit').classList.replace('bg-senate-blue', 'bg-green-600');
+            document.getElementById('btn-submit').classList.replace('hover:bg-blue-800', 'hover:bg-green-700');
+            document.getElementById('btn-cancel-edit').classList.remove('hidden');
+            document.getElementById('btn-clear').classList.add('hidden');
+
+            document.getElementById('scroll-container').scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function deleteRecord(id) {
+            if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลนี้? (การลบจะไม่สามารถกู้คืนได้)')) return;
+            
+            showLoader(true);
+            const reqData = { action: 'delete', id: id };
+            
+            const handleSuccess = (res) => {
+                showLoader(false);
+                if(res && res.error) showToast('ผิดพลาด: ' + res.error, 'error');
+                else { showToast('ลบข้อมูลสำเร็จ'); setTimeout(() => window.location.reload(), 1500); }
+            };
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(handleSuccess).withFailureHandler(()=>showToast('เชื่อมต่อล้มเหลว','error')).processAction(reqData);
+            } else if (GAS_API_URL) {
+                fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(reqData), headers: { 'Content-Type': 'text/plain' } })
+                .then(r => r.json()).then(handleSuccess).catch(()=>showToast('เชื่อมต่อล้มเหลว','error'));
+            }
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            if (!editingId && !uploadedBase64) {
+                showToast('กรุณาอัปโหลดภาพหน้าปก', 'error'); return;
+            }
+
+            const formData = {
+                action: editingId ? 'edit' : 'add',
+                id: editingId,
+                year: document.getElementById('form-year').value,
+                projects: document.getElementById('form-projects').value,
+                budget: document.getElementById('form-budget').value,
+                link: document.getElementById('form-link').value,
+                note: document.getElementById('form-note').value,
+                coverBase64: uploadedBase64,
+                fileName: uploadedFileName
+            };
+
+            showLoader(true);
+            const handleSuccess = (res) => {
+                showLoader(false);
+                if(res && res.error) showToast('ผิดพลาด: ' + res.error, 'error');
+                else { 
+                    showToast(editingId ? 'อัปเดตข้อมูลสำเร็จ' : 'บันทึกข้อมูลสำเร็จ'); 
+                    setTimeout(() => window.location.reload(), 1500); 
+                }
+            };
+            const handleError = () => { showLoader(false); showToast('เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว', 'error'); };
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(handleSuccess).withFailureHandler(handleError).processAction(formData);
+            } else if (GAS_API_URL) {
+                fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(formData), headers: { 'Content-Type': 'text/plain' } })
+                .then(r => r.json()).then(handleSuccess).catch(handleError);
+            }
+        }
+
+        function showLoader(show) { document.getElementById('loader').classList[show?'remove':'add']('hidden'); }
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bg = type === 'success' ? 'bg-green-600' : 'bg-red-600';
+            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+            toast.className = `flex items-center gap-2 text-white px-5 py-3 rounded shadow-lg transform transition-all duration-300 translate-x-full opacity-0 ${bg}`;
+            toast.innerHTML = `<i class="fas ${icon}"></i> <span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-x-full', 'opacity-0'), 10);
+            setTimeout(() => { toast.classList.add('translate-x-full', 'opacity-0'); setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+    </script>
+</body>
+</html>
